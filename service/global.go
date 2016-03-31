@@ -20,7 +20,6 @@ package service
 import (
 	"errors"
 
-	"github.com/Unknwon/com"
 	"github.com/astaxie/beego/orm"
 
 	"github.com/keywordAnlyz/kaweb/models"
@@ -31,22 +30,6 @@ type GlobalService struct{}
 var baseGlobalItems []models.KWGlobal
 var defaultGlobalItems = []models.KWGlobal{
 	{Cate: models.BaseItem, ItemDisplay: "最低频次", Item: "MINFRE", Value: "10", Desc: "词汇解析最低频次要求，低于该频次将忽略。"},
-}
-
-// 获取最小频次设置
-func (g *GlobalService) GetMinFre() (int, error) {
-
-	o := orm.NewOrm()
-	item := models.KWGlobal{}
-	err := o.QueryTable(item).Filter("Item", "MINFRE").One(&item)
-	if err != nil {
-		return 0, err
-	}
-	if item.Value == "" {
-		return 0, nil
-	}
-
-	return com.StrTo(item.Value).MustInt(), nil
 }
 
 //获取全局基础配置信息

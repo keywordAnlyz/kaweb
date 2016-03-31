@@ -49,6 +49,7 @@ func (g *GlobalController) UpdateItem() {
 		g.Flash.Success("更新配置项成功")
 	}
 	//跳转前必须保持Flash
+	g.SetFlashTarget("/global/list.html")
 	g.StoreFlash()
 	g.Redirect("/global/list.html", 302)
 }

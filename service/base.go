@@ -18,6 +18,7 @@
 package service
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/astaxie/beego"
@@ -40,6 +41,11 @@ func init() {
 func initDB() {
 
 	dbPath := filepath.Join(beego.AppPath, "data", "keywordanylya.db")
+
+	dir := filepath.Dir(dbPath)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.Mkdir(dir, 0777)
+	}
 
 	err := orm.RegisterDataBase("default", "sqlite3", dbPath)
 	if err != nil {

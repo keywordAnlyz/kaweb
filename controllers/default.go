@@ -11,6 +11,8 @@ type BaseController struct {
 	Flash *beego.FlashData
 }
 
+const flashTargetFlag = "targeturl"
+
 // Prepare runs before request function execution.
 func (b *BaseController) Prepare() {
 
@@ -18,6 +20,13 @@ func (b *BaseController) Prepare() {
 
 	//Read Flash
 	b.Flash = beego.ReadFromRequest(&b.Controller)
+	//判断 Flash 是否是传递给本页面的
+	if v := b.Flash.Data[flashTargetFlag]; v != "" && v != b.Ctx.Request.RequestURI {
+		b.Flash = beego.NewFlash()
+	} else {
+		b.SetFlashTarget("delete")
+	}
+
 }
 
 func (b *BaseController) Render() error {
@@ -29,4 +38,9 @@ func (b *BaseController) Render() error {
 func (b *BaseController) StoreFlash() {
 	// save flash
 	b.Flash.Store(&b.Controller)
+}
+
+//设置Flash传递地址
+func (b *BaseController) SetFlashTarget(url string) {
+	b.Flash.Data[flashTargetFlag] = url
 }

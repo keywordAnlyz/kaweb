@@ -1,0 +1,46 @@
+{{template "base/base.html" .}}
+
+{{define "meta"}}
+<meta name="description" content="" />
+<meta name="keywords" content="">
+<title>{{.siteName}}</title>
+{{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-cf am-padding">
+      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">新建任务</strong> / <small>创建解析任务</small></div>
+    </div>
+
+<div class="am-g am-g-fixed">
+    <div class="am-u-md-9"> 
+		          
+		          <form action="/task/add.html" method="POST" enctype="multipart/form-data" class="am-form" data-am-validator>
+  <fieldset>
+    <legend>NEW</legend>
+    <div class="am-form-group">
+      <label for="taskname">任务名称</label>
+      <input type="text" class="" id="taskname" name="taskname" value="{{.taskname}}" placeholder="请输入任务名称方便标识任务" minlength="4" data-validation-message=”至少4个长度“  required>
+    </div> 
+
+    <div class="am-form-group">
+      <label for="srcfile">待解析文件</label>
+      <input type="file" id="srcfile" name="srcfile" required>
+      <p class="am-form-help">请选择要解析的原始上传的文件，仅支持rar,txt,doc文件格式...</p>
+    </div>
+    <p><button type="submit" class="am-btn am-btn-primary">开启新任务</button></p>
+  </fieldset>
+</form>
+
+    </div>
+    </div>
+    
+{{end}}
+
+{{define "bottom"}}
+    <script type="text/javascript">
+        $(function()
+        {
+            jQuery("time.timeago").timeago();
+        });
+    </script>
+{{end}}
