@@ -1,0 +1,32 @@
+{{template "base/base.html" .}}
+{{define "meta"}} {{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-g am-g-fixed">
+    <div class="am-u-md-9"> 
+            {{range .list}}
+            <form action="/global/item/update" method="post" class="am-form-horizontal" role="form">
+            	<input type="hidden" name="id" value="{{.Id}}" />
+            	<div class="am-form-group">
+				    <label for="items_{{.Id}}" class="am-u-sm-4 am-form-label">{{.ItemDisplay}}</label>
+				    <div class="am-u-sm-8">
+				      <input type="text" id="items_{{.Id}}" name="value" class="am-form-field"  value="{{.Value}}">  
+				      <button type="submit" class="am-btn am-btn-primary">更新</button>
+					 <p>{{.Desc}}</p> 
+				    </div> 
+			  </div> 
+			  
+            </form>
+            {{end}} 
+    </div>
+    
+{{end}}
+
+{{define "bottom"}}
+    <script type="text/javascript">
+        $(function()
+        {
+            jQuery("time.timeago").timeago();
+        });
+    </script>
+{{end}}

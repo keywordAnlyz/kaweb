@@ -1,0 +1,26 @@
+{{template "base/base.html" .}}
+
+{{define "meta"}}
+<meta name="description" content="" />
+<meta name="keywords" content="">
+<title>{{.siteName}}</title>
+{{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-g am-g-fixed">
+    <div class="am-u-md-9">
+        <div class="widget_content_player" style="height:300px;">
+            
+        </div> 
+    </div>
+    
+{{end}}
+
+{{define "bottom"}}
+    <script type="text/javascript">
+        $(function()
+        {
+            jQuery("time.timeago").timeago();
+        });
+    </script>
+{{end}}
