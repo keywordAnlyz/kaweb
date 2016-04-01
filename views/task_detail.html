@@ -26,31 +26,59 @@
 		 <tr> 
 		 	<td class="am-primary">状态</td>
 		 	<td>
-		 		<button type="button" class="am-btn am-btn-warning am-radius" disabled="disabled">{{.task.Status}}</button>
+		 		<strong>{{.task.Status}}</strong> 
 			 
 		 	</td>
 		 </tr>
+
 		 <tr>
 		 	<td  class="am-primary"></td>
 		 	<td>
 		 		  <a href="/task/{{.task.Id}}/start.html"  class="am-btn am-radius am-btn-primary"> 尝试重启</a>
 		 		    <a href="/task/{{.task.Id}}/detail.html"  class="am-btn am-radius am-btn-primary"> 刷新状态</a>
+		 		   {{if .words}} 
+		 		        <a href="/task/{{.task.Id}}/words.html" c class="am-btn am-radius am-btn-primary">查看词汇列表</a>
+						   <a href="/report/show.html?taskId={{.task.Id}}"  class="am-btn am-radius am-btn-primary">查看报表统计</a>
+		 		   {{end}}
 		 	</td>
 		 </tr>
-	</tbody></table>
+	</tbody>
+	</table>
 		
     </div>
     </div>
+    		{{if .words}}
+    <div class="am-g">
+    		<div class="am-u-md-12">
+				 <div class="am-panel am-panel-default">
+				  <div class="am-panel-hd">
+				    <div class="am-panel-hd am-cf"  >词汇TOP{{len .words}}</div>
+				  </div>
+				   <div class="am-g am-padding-lg"> 
+				  			{{range .words}}
+						  	 <div class="am-u-md-3 am-text-left">
+						     	<span class=""> <a href="/task/{{$.task.Id}}/word/{{.WordId}}/detail.html">{{.Word.Text}}</a> {{.Fre}}</span>
+						  	 </div>
+						  	 {{end}}
+				  		
+				  </div>
+		  		</div>
+
+		    </div>		
+		    
+    </div>
+		    {{end}}
  <div class="am-g">
  	<div class="am-u-md-6">
  		 <div class="am-panel am-panel-default">
 				  <div class="am-panel-hd">
 				    <div class="am-panel-hd am-cf" data-am-collapse="{target: '#collapse-panel-tasklogs'}">任务文件<span class="am-icon-chevron-down am-fr"></span></div>
 				  </div>
+				 
 				<ul id="collapse-panel-tasklogs" class="am-list am-list-static">
 		           {{range .taskfiles}}
-				     <li>
-				     	 {{.Name}}
+				     <li> 
+				     	 <a href="/task/{{$.task.Id}}/word/0/view.html?fileName={{.Name}}">  {{.Name}}</a> 
 				     </li> 
 				  {{end}}
 				  </ul>

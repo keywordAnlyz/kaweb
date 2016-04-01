@@ -1,0 +1,50 @@
+{{template "base/base.html" .}}
+{{define "meta"}} 
+<title>历史任务列表</title>
+{{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-cf am-padding">
+      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">任务列表</strong> / <small>最近100个历史任务</small></div>
+ </div>
+<div class="am-g am-g-fixed">
+	<div>
+		<table class="am-table am-table-striped am-table-hover">
+		 <thead>
+        <tr>
+            <th>名称</th>
+            <th>创建时间</th>
+            <th>状态</th>
+            <th></th>
+        </tr>
+    </thead>
+		<tbody>
+			{{range .tasks}}
+				<tr>
+					<td><a href="/task/{{.Id}}/detail.html"> {{.Name}}</a></td>
+					<td>{{.Status}}</td>
+					<td>{{tolocal .CreateTime "2006-01-02 15:04:05"}}</td>
+					<td>
+						{{if eq .Status 5}}
+						   <a href="/task/{{.Id}}/words.html"  >查看词汇列表</a>&nbsp;&nbsp;
+						   <a href="/report/show.html?taskId={{.Id}}" >查看报表统计</a>
+						{{end}}
+					</td>
+				</tr>
+			{{end}}
+		</tbody>
+		</table>
+
+	</div>
+
+</div>
+{{end}}
+
+{{define "bottom"}}
+    <script type="text/javascript">
+        $(function()
+        {
+            jQuery("time.timeago").timeago();
+        });
+    </script>
+{{end}}

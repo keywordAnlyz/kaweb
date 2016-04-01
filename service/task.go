@@ -18,13 +18,15 @@
 package service
 
 import (
-	"bufio"
+	// "bufio"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,7 +59,7 @@ func (t *TaskService) createTaskSaveDir(task *models.Task) error {
 		name = fmt.Sprintf("%s(%d)", task.Name, count)
 	}
 	//创建文件夹
-	if err := os.MkdirAll(dir, 0666); err != nil {
+	if err := os.MkdirAll(dir, 0777); err != nil {
 		return err
 	}
 	task.Name = name
@@ -91,12 +93,12 @@ func (t *TaskService) NewTask(name string, file multipart.File, header *multipar
 
 	//创建原始文件存储位置
 	savePath := t.getTaskSrcFilePath(task)
-	if err := os.MkdirAll(savePath, 0666); err != nil {
+	if err := os.MkdirAll(savePath, 0777); err != nil {
 		return task, fmt.Errorf("创建文件存储目录是失败,%s", err)
 	}
 
 	//存储文件
-	f, err := os.OpenFile(filepath.Join(savePath, header.Filename), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	f, err := os.OpenFile(filepath.Join(savePath, header.Filename), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return task, fmt.Errorf("存储待解析文件失败,%s", err)
 	}
@@ -195,6 +197,227 @@ func (t *TaskService) GetTaskFiles(taskId int) ([]os.FileInfo, error) {
 		return nil
 	})
 	return files, err
+}
+
+//获取任务
+func (t *TaskService) GetTaskWords(taskId int, topCount int) ([]models.TaskWord, error) {
+	o := orm.NewOrm()
+	list := []models.TaskWord{}
+	qs := o.QueryTable(&models.TaskWord{})
+
+	_, err := qs.Filter("TaskId", taskId).OrderBy("-Fre").Limit(topCount).All(&list)
+	if err != nil {
+		return nil, err
+	}
+	for i, v := range list {
+		w := models.Word{Id: v.WordId}
+		o.QueryTable(&w).Filter("Id", w.Id).One(&w)
+		list[i].Word = w
+	}
+	return list, nil
+}
+
+//获取任务
+func (t *TaskService) FilterTaskWords(taskId int, keywords []string, minFre int) ([]models.TaskWord, error) {
+
+	//粗暴处理，获取全部后进行过滤
+	list, err := t.GetTaskWords(taskId, -1)
+	if err != nil {
+		return nil, err
+	}
+	if len(keywords) == 0 && minFre == 0 {
+		return list, nil
+	}
+	beego.Debug(keywords, len(keywords))
+	beego.Debug(minFre)
+	words := list[:0]
+	for _, v := range list {
+		if minFre > 0 && v.Fre >= minFre {
+			words = append(words, v)
+		} else if com.IsSliceContainsStr(keywords, v.Word.Text) {
+			words = append(words, v)
+		}
+	}
+	return words, nil
+}
+
+//获得单个词汇信息，包含该认为下的词汇统计
+func (t *TaskService) GetTaskSingleWords(taskId int, wordId int) (models.Word, []models.TaskWord, error) {
+
+	o := orm.NewOrm()
+	w := models.Word{Id: wordId}
+	err := o.QueryTable(&w).Filter("Id", wordId).One(&w)
+	if err != nil {
+		return w, nil, err
+	}
+
+	list := []models.TaskWord{}
+	qs := o.QueryTable(&models.TaskWord{})
+	_, err = qs.Filter("TaskId", taskId).Filter("WordId", wordId).All(&list)
+	return w, list, err
+}
+
+//获取任务列表
+func (t *TaskService) GetTaskList(topCount int) ([]models.Task, error) {
+	o := orm.NewOrm()
+	list := []models.Task{}
+
+	_, err := o.QueryTable(&models.Task{}).OrderBy("-CreateTime").Limit(topCount).All(&list)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+//高亮文件指定词汇
+func (t *TaskService) HightlightFile(task models.Task, wordId int, filename string) (string, models.Word, error) {
+
+	//先读取文件
+	dir := t.getTaskNewFilePath(task)
+	bytes, err := ioutil.ReadFile(filepath.Join(dir, filename))
+	if err != nil {
+		return "", models.Word{}, err
+	}
+
+	//不需要进行高亮，直接显示即可
+	if wordId == 0 {
+		return string(bytes), models.Word{}, nil
+	}
+
+	word, taskWords, err := t.GetTaskSingleWords(task.Id, wordId)
+	if err != nil {
+		return "", word, err
+	}
+
+	w := &worddog.Word{
+		Text:      word.Text,
+		Pos:       word.Pos,
+		Positions: []worddog.Position{},
+	}
+
+	for _, v := range taskWords {
+		if v.FileName != filename {
+			continue
+		}
+		if v.Postion == "" {
+			continue
+		}
+
+		items := strings.Split(v.Postion, ",")
+		for _, p := range items {
+			if len(p) <= 3 {
+				continue
+			}
+			if p[0] != '(' || p[len(p)-1] != ')' || strings.ContainsAny(p, "|") == false {
+				continue
+			}
+			xy := strings.Split(p[1:len(p)-1], "|")
+
+			w.Positions = append(w.Positions,
+				worddog.Position{
+					Start: com.StrTo(xy[0]).MustInt(),
+					End:   com.StrTo(xy[1]).MustInt(),
+				})
+		}
+	}
+	if len(w.Positions) == 0 {
+		return string(bytes), word, nil
+	}
+
+	html := worddog.HighlightDefault(bytes, w)
+	return html, word, nil
+}
+
+func (t *TaskService) segment(task models.Task, file string) (int, error) {
+	beego.Debug(worddog.Config.MinFre)
+	words, err := worddog.SegmentFile(file)
+	if err != nil {
+		return 0, err
+	}
+
+	ws, err := t.SaveWords(words)
+	if err != nil {
+		return 0, err
+	}
+
+	//存储任务提取的词汇
+	fileName := filepath.Base(file)
+	o := orm.NewOrm()
+
+	//删除原记录
+	_, err = o.QueryTable(&models.TaskWord{}).Filter("TaskId", task.Id).Delete()
+	if err != nil {
+		return 0, err
+	}
+
+	for _, v := range words {
+		postions := ""
+		for _, p := range v.Positions {
+			postions += fmt.Sprintf("(%d|%d),", p.Start, p.End)
+		}
+		_, err := o.Insert(&models.TaskWord{
+			TaskId:   task.Id,
+			WordId:   ws[v.Text].Id,
+			FileName: fileName,
+			Fre:      v.Frequency(),
+			Postion:  postions,
+		})
+		if err != nil {
+			return 0, err
+		}
+	}
+	return len(words), nil
+}
+
+//保存获取读取词汇基本信息
+func (t *TaskService) SaveWords(words map[string]*worddog.Word) (map[string]*models.Word, error) {
+	o := orm.NewOrm()
+	ws := make(map[string]*models.Word, len(words))
+	for _, v := range words {
+		//存储词汇
+		w := &models.Word{
+			Text: v.Text,
+			Pos:  v.Pos,
+		}
+		if _, id, err := o.ReadOrCreate(w, "Text"); err != nil {
+			return nil, err
+		} else {
+			w.Id = int(id)
+		}
+		ws[w.Text] = w
+	}
+	return ws, nil
+}
+
+//解析原始文件
+func (t *TaskService) AnyFile(task models.Task) error {
+	//1.如果是压缩包，需解压
+	//2.文件格式转换为 utf-8
+
+	srcDir := t.getTaskSrcFilePath(task)
+
+	toDir := t.getTaskNewFilePath(task)
+	if err := os.MkdirAll(toDir, 0777); err != nil {
+		return fmt.Errorf("创建文件存储目录是失败,%s", err)
+	}
+
+	err := filepath.Walk(srcDir, func(path string, f os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if f.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(f.Name())
+
+		if ext == ".txt" {
+			return convert2UTF8(path, filepath.Join(toDir, f.Name()))
+		} else if ext == ".rar" {
+			//解压文件
+		}
+		return nil
+	})
+	return err
 }
 
 var taskDoing chan int
@@ -332,99 +555,6 @@ func execTask(taskId int) {
 
 }
 
-func (t *TaskService) segment(task models.Task, file string) (int, error) {
-	beego.Debug(worddog.Config.MinFre)
-	words, err := worddog.SegmentFile(file)
-	if err != nil {
-		return 0, err
-	}
-
-	ws := make([]*models.Word, len(words))
-	i := 0
-	for _, v := range words {
-		//存储词汇
-		ws[i] = &models.Word{
-			Text: v.Text,
-			Pos:  v.Pos,
-		}
-		i++
-	}
-	err = t.SaveWorkds(ws)
-	if err != nil {
-		return 0, err
-	}
-
-	//存储任务提取的词汇
-	fileName := filepath.Base(file) + filepath.Ext(file)
-	o := orm.NewOrm()
-
-	//删除原记录
-	o.Delete(&models.TaskWord{TaskId: task.Id})
-
-	i = 0
-	for _, v := range words {
-		postions := ""
-		for _, p := range v.Positions {
-			postions += fmt.Sprintf("(%d,%d)", p.Start, p.End)
-		}
-		_, err := o.Insert(&models.TaskWord{
-			TaskId:   task.Id,
-			WordId:   ws[i].Id,
-			FileName: fileName,
-			Fre:      v.Frequency(),
-			Postion:  postions,
-		})
-		if err != nil {
-			return 0, err
-		}
-	}
-	return len(words), nil
-}
-
-//保存获取读取词汇基本信息
-func (t *TaskService) SaveWorkds(words []*models.Word) error {
-	o := orm.NewOrm()
-	for _, v := range words {
-		if _, id, err := o.ReadOrCreate(v, "Text"); err != nil {
-			return err
-		} else {
-			v.Id = int(id)
-		}
-	}
-	return nil
-}
-
-//解析原始文件
-func (t *TaskService) AnyFile(task models.Task) error {
-	//1.如果是压缩包，需解压
-	//2.文件格式转换为 utf-8
-
-	srcDir := t.getTaskSrcFilePath(task)
-
-	toDir := t.getTaskNewFilePath(task)
-	if err := os.MkdirAll(toDir, 0666); err != nil {
-		return fmt.Errorf("创建文件存储目录是失败,%s", err)
-	}
-
-	err := filepath.Walk(srcDir, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if f.IsDir() {
-			return nil
-		}
-		ext := filepath.Ext(f.Name())
-
-		if ext == ".txt" {
-			return convert2UTF8(path, filepath.Join(toDir, f.Name()))
-		} else if ext == ".rar" {
-			//解压文件
-		}
-		return nil
-	})
-	return err
-}
-
 func convert2UTF8(srcFile, toFile string) error {
 	beego.Debug(srcFile, toFile)
 	f, err := os.Open(srcFile)
@@ -433,45 +563,13 @@ func convert2UTF8(srcFile, toFile string) error {
 	}
 	defer f.Close()
 
-	to, err := os.Create(toFile)
+	//默认按GBK编码处理
+	rd := mahonia.NewDecoder("GB2312").NewReader(f)
+	bytes, err := ioutil.ReadAll(rd)
 	if err != nil {
 		return err
 	}
-	var isOk bool
-	defer func() {
-
-		beego.Debug(isOk, "---------------")
-		//写文件失败后，删除文件
-		if !isOk {
-			os.Remove(toFile)
-		}
-	}()
-	defer to.Close()
-	w := bufio.NewWriter(to)
-
-	//默认按GBK编码处理
-	rd := mahonia.NewDecoder("GB2312").NewReader(f)
-	// _, err = bufio.NewReader(rd).WriteTo(w)
-	// if err != nil {
-	// 	return err
-	// }
-	buf := make([]byte, 1024)
-	for {
-		n, err := rd.Read(buf)
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if n == 0 {
-			break
-		}
-		if n2, err := w.Write(buf[:n]); err != nil {
-			return err
-		} else if n2 != n {
-			return errors.New("写文件失败，数据丢失")
-		}
-	}
-	isOk = true
-	return nil
+	return ioutil.WriteFile(toFile, bytes, 0777)
 }
 
 func init() {

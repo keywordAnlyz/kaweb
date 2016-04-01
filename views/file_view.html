@@ -1,0 +1,35 @@
+{{template "base/base.html" .}}
+
+{{define "meta"}} 
+<title>查看文件内容</title>
+{{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-cf am-padding">
+      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">查看文件</strong> / <small><a href="/task/{{.task.Id}}/detail.html"> {{.task.Name}}</a>,高亮显示词汇【{{.word.Text}}】</small></div>
+    </div>
+<div class="am-g am-g-fixed">
+    <div class="am-u-md-10">
+
+    <article class="am-article">
+  <div class="am-article-hd">
+    <h1 class="am-article-title">{{.fileName}}</h1>
+    <p class="am-article-meta"></p>
+  </div>
+
+  <div class="am-article-bd">
+	{{str2html .html}}
+  </div>
+</article>
+ 
+    </div>
+    
+{{end}}
+
+{{define "bottom"}}
+    <script type="text/javascript">
+        $(function()
+        { 
+        });
+    </script>
+{{end}}

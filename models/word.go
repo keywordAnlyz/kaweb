@@ -33,6 +33,7 @@ type TaskWord struct {
 	Id       int
 	TaskId   int    //任务ID
 	WordId   int    //词汇ID
+	Word     Word   `orm:"-"`
 	Fre      int    //词汇出现次数
 	Postion  string //词汇位置信息，{1,2},{2,3}
 	FileName string //词汇所在文件名

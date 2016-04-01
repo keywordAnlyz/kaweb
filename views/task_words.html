@@ -1,0 +1,38 @@
+{{template "base/base.html" .}}
+{{define "meta"}} 
+<title>{{.task.Name}}词汇列表</title>
+{{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-cf am-padding">
+      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">词汇列表清单</strong> / <small><a href="/task/{{.task.Id}}/detail.html"> {{.task.Name}}</a></small></div>
+ </div>
+<div class="am-g am-g-fixed">
+    <div class="am-u-md-9">
+         <div class="am-panel am-panel-default">
+				  <div class="am-panel-hd">
+				    <div class="am-panel-hd am-cf"  >总计{{len .words}}个主要词汇
+				    <a href="/report/show.html?taskId={{.id}}" class="am-fr">查看报表统计</a>
+
+				    </div>
+				  </div>
+				  <div class="am-g">
+				   {{range .words}}
+				  	 <div class="am-u-md-3">
+				     	 <a href="/task/{{$.id}}/word/{{.WordId}}/detail.html">{{.Word.Text}}</a> {{.Fre}}
+				  	 </div>
+				  	 {{end}}
+				  </div> 
+		  		</div>
+    </div>
+    
+{{end}}
+
+{{define "bottom"}}
+    <script type="text/javascript">
+        $(function()
+        {
+            jQuery("time.timeago").timeago();
+        });
+    </script>
+{{end}}

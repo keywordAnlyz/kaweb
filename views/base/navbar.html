@@ -1,46 +1,38 @@
 <div class="am-offcanvas-bar admin-offcanvas-bar">
     <ul class="am-list admin-sidebar-list">
         <li>
-            <a href="index.html">
+            <a href="/task/add.html">
                 <span class="am-icon-home"></span> 首页</a>
         </li>
         <li class="admin-parent">
             <a class="am-cf" data-am-collapse="{target: '#collapse-nav'}">
-                <span class="am-icon-file"></span> 报表管理
+                <span class="am-icon-tasks"></span> 任务管理
                 <span class="am-icon-angle-right am-fr am-margin-right"></span>
             </a>
             <ul class="am-list am-collapse admin-sidebar-sub am-in" id="collapse-nav">
                 <li>
                     <a href="/task/add.html" class="am-cf">
-                        <span class="am-icon-th"></span> 新建任务
+                        <span class="am-icon-plus"></span> 新建任务
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/task/list.html" class="am-cf">
+                    <a href="/task/list.html" class="am-cf">
                         <span class="am-icon-th"></span> 任务列表
                     </a>
                 </li>
-                <li>
-                    <a href="/admin/tag/list" class="am-cf">
-                        <span class="am-icon-th"></span> 新建报表
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/article/list">
-                        <span class="am-icon-th"></span> 报表清单</a>
-                </li>  
+                 
             </ul>
         </li>
         <li class="admin-parent">
             <a class="am-cf" data-am-collapse="{target: '#collapse-nav'}">
-                <span class="am-icon-file"></span>系统配置
+                <span class="am-icon-gear"></span>系统配置
                 <span class="am-icon-angle-right am-fr am-margin-right"></span>
             </a>
             <ul class="am-list am-collapse admin-sidebar-sub am-in" id="collapse-nav">
                 
                 <li>
-                    <a href="/admin/tag/list" class="am-cf">
-                        <span class="am-icon-th"></span> 新增词汇
+                    <a href="#" class="am-cf" disabled="disabled" >
+                        <span class="am-icon-plus"></span> 新增词汇
                     </a>
                 </li>
                 <li>
@@ -56,7 +48,7 @@
         <div class="am-panel-bd">
             <p>
                 <span class="am-icon-bookmark"></span>通知</p>
-            <p>报表[]已完成</p>
+            <p>共完成[---]个任务</p>
         </div>
     </div>
     <div class="am-panel am-panel-default admin-sidebar-panel">
