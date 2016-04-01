@@ -22,6 +22,7 @@ type Word struct {
 	Id   int
 	Text string //词汇名
 	Pos  string //词汇属性
+
 }
 
 func (w *Word) TableName() string {
@@ -41,4 +42,29 @@ type TaskWord struct {
 
 func (w *Word) TaskWord() string {
 	return "taskWords"
+}
+
+//用于汇总
+type SumWord struct {
+	*Word
+	TaskWords []*TaskWord
+}
+
+//获取
+func (s *SumWord) SumFre() int {
+	sum := 0
+	for _, v := range s.TaskWords {
+		sum += v.Fre
+	}
+	return sum
+}
+
+//按文件汇总频次
+func (s *SumWord) SumFreInFiles() map[string]int {
+
+	fs := map[string]int{}
+	for _, v := range s.TaskWords {
+		fs[v.FileName] = fs[v.FileName] + v.Fre
+	}
+	return fs
 }

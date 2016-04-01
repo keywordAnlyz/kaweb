@@ -21,6 +21,7 @@ import (
 
 	"github.com/ysqi/com"
 
+	"github.com/keywordAnlyz/kaweb/models"
 	"github.com/keywordAnlyz/kaweb/service"
 )
 
@@ -47,6 +48,10 @@ func (f *FileViewController) Get() {
 	html, word, err := s.HightlightFile(task, wordId, fileName)
 	if err != nil {
 		f.Flash.Error("处理失败,%s", err)
+	}
+
+	if word == nil {
+		word = &models.Word{}
 	}
 
 	f.Data["word"] = word

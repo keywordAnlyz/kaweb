@@ -10,7 +10,7 @@
 
 <div class="am-g am-g-fixed">
     <div class="am-u-md-10"> 
-<table class="am-table am-table-bordered am-table-compact am-table-hover">
+<table class="am-table am-table-bordered am-table-compact">
 	<tbody>
 		 <tr>
 		 	<td class="am-primary">任务名称</td>
@@ -23,16 +23,20 @@
 		 <tr> 
 		 	<td class="am-primary"> 总频次</td>
 		 	<td> 
-		 		{{.sumFre}}
+		 		{{.word.SumFre}}
 		 	</td>
 		 </tr>
 		 <tr>
 		 	<td  class="am-primary">文件列表</td>
 		 	<td>
-		 		{{range .taskWords}}
-		 		 <a href="/task/{{$.task.Id}}/word/{{.WordId}}/view.html?fileName={{.FileName}}">  {{.FileName}}</a> 
-		 		 {{.Fre}}次
+		 		<ul>{{range $k,$v := .word.SumFreInFiles}}
+				
+					<li>
+				
+		 			 <a href="/task/{{$.task.Id}}/word/{{$.word.Id}}/view.html?fileName={{$k}}">  {{$k}}</a> 
+		 		 {{$v}}次</li>
 		 		{{end}}
+		 		</ul>
 		 		  <!-- <a href="/task/{{.task.Id}}/word/{{.word.Id}}/detail.html"  class="am-btn am-radius am-btn-primary"> 尝试重启</a> -->
 		 		    <!-- <a href="/task/{{.task.Id}}/detail.html"  class="am-btn am-radius am-btn-primary"> 刷新状态</a> -->
 		 	</td>

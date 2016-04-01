@@ -2,7 +2,7 @@
 * @Author: ysqi
 * @Date:   2016-03-31 20:53:05
 * @Last Modified by:   ysqi
-* @Last Modified time: 2016-04-02 02:27:33
+* @Last Modified time: 2016-04-02 03:57:19
  */
 
 package controllers
@@ -178,17 +178,10 @@ func (t *TaskController) WordDetail() {
 	t.Data["task"] = task
 
 	//本词汇信息
-	word, taskwords, err := s.GetTaskSingleWords(taskId, wordId)
+	sumWord, err := s.GetTaskSingleWords(taskId, wordId)
 	if err != nil {
 		t.Flash.Error("获取词汇信息失败,%s", err)
 	}
 
-	sum := 0
-	for _, v := range taskwords {
-		sum += v.Fre
-	}
-
-	t.Data["word"] = word
-	t.Data["taskWords"] = taskwords
-	t.Data["sumFre"] = sum
+	t.Data["word"] = sumWord
 }

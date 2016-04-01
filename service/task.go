@@ -18,7 +18,6 @@
 package service
 
 import (
-	// "bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -27,19 +26,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
-	"github.com/henrylee2cn/mahonia"
 	"github.com/keywordAnlyz/worddog"
 	"github.com/ysqi/com"
 
 	"github.com/keywordAnlyz/kaweb/models"
 )
-
-var suportFileType = []string{".txt", ".rar", ".doc"}
 
 type TaskService struct {
 }
@@ -84,8 +79,8 @@ func (t *TaskService) NewTask(name string, file multipart.File, header *multipar
 		return task, errors.New("文件为空")
 	}
 
-	if ext := filepath.Ext(header.Filename); com.IsSliceContainsStr(suportFileType, ext) == false {
-		return task, fmt.Errorf("上传待解析文件格式%q不支持，目前仅支持%v", ext, suportFileType)
+	if err := checkTaskFile(header.Filename); err != nil {
+		return task, err
 	}
 	if err := t.createTaskSaveDir(&task); err != nil {
 		return task, fmt.Errorf("创建文件存储目录是失败,%s", err)
@@ -143,7 +138,6 @@ func (t *TaskService) UpdateState(taskId int, status models.TaskStatus, msg ...s
 		task.Text2 = msg[1]
 	}
 	_, err := o.Update(&task, fields...)
-	beego.Error(err)
 	return err
 }
 
@@ -156,7 +150,6 @@ func (t *TaskService) StartTask(taskId int) error {
 	if err != nil {
 		return err
 	}
-	beego.Debug(task.Status, models.Status_Running)
 	if task.Status == models.Status_Running {
 		return fmt.Errorf("任务当前是%q状态,不能重新运行", task.Status)
 	}
@@ -199,10 +192,10 @@ func (t *TaskService) GetTaskFiles(taskId int) ([]os.FileInfo, error) {
 	return files, err
 }
 
-//获取任务
-func (t *TaskService) GetTaskWords(taskId int, topCount int) ([]models.TaskWord, error) {
+//获取任务下词汇
+func (t *TaskService) GetTaskWords(taskId int, topCount int) ([]*models.SumWord, error) {
 	o := orm.NewOrm()
-	list := []models.TaskWord{}
+	list := []*models.TaskWord{}
 	qs := o.QueryTable(&models.TaskWord{})
 
 	_, err := qs.Filter("TaskId", taskId).OrderBy("-Fre").Limit(topCount).All(&list)
@@ -214,25 +207,28 @@ func (t *TaskService) GetTaskWords(taskId int, topCount int) ([]models.TaskWord,
 		o.QueryTable(&w).Filter("Id", w.Id).One(&w)
 		list[i].Word = w
 	}
-	return list, nil
+	return t.GroupTaskWordsByWordId(list), nil
 }
 
 //获取任务
-func (t *TaskService) FilterTaskWords(taskId int, keywords []string, minFre int) ([]models.TaskWord, error) {
+func (t *TaskService) FilterTaskWords(taskId int, keywords []string, minFre int) ([]*models.SumWord, error) {
 
 	//粗暴处理，获取全部后进行过滤
 	list, err := t.GetTaskWords(taskId, -1)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(keywords) == 0 && minFre == 0 {
 		return list, nil
 	}
-	beego.Debug(keywords, len(keywords))
-	beego.Debug(minFre)
+	if minFre == 0 && strings.Join(keywords, "") == "" {
+		return list, nil
+	}
+
 	words := list[:0]
 	for _, v := range list {
-		if minFre > 0 && v.Fre >= minFre {
+		if minFre > 0 && v.SumFre() >= minFre {
 			words = append(words, v)
 		} else if com.IsSliceContainsStr(keywords, v.Word.Text) {
 			words = append(words, v)
@@ -242,19 +238,56 @@ func (t *TaskService) FilterTaskWords(taskId int, keywords []string, minFre int)
 }
 
 //获得单个词汇信息，包含该认为下的词汇统计
-func (t *TaskService) GetTaskSingleWords(taskId int, wordId int) (models.Word, []models.TaskWord, error) {
+func (t *TaskService) GetTaskSingleWords(taskId int, wordId int) (*models.SumWord, error) {
 
 	o := orm.NewOrm()
-	w := models.Word{Id: wordId}
-	err := o.QueryTable(&w).Filter("Id", wordId).One(&w)
+	w := &models.Word{Id: wordId}
+	err := o.QueryTable(&w).Filter("Id", wordId).One(w)
 	if err != nil {
-		return w, nil, err
+		return nil, err
 	}
 
-	list := []models.TaskWord{}
+	list := []*models.TaskWord{}
 	qs := o.QueryTable(&models.TaskWord{})
 	_, err = qs.Filter("TaskId", taskId).Filter("WordId", wordId).All(&list)
-	return w, list, err
+	if len(list) == 0 {
+		return &models.SumWord{Word: w}, nil
+	}
+	list[0].Word = *w
+	return t.GroupTaskWordsByWordId(list)[0], err
+}
+
+func (t *TaskService) GroupTaskWordsByWordId(words []*models.TaskWord) []*models.SumWord {
+	ws := map[int]*models.SumWord{}
+	for _, v := range words {
+		if w, ok := ws[v.WordId]; ok {
+			w.TaskWords = append(w.TaskWords, v)
+		} else {
+			ws[v.WordId] = &models.SumWord{
+				Word:      &v.Word,
+				TaskWords: []*models.TaskWord{v},
+			}
+		}
+	}
+
+	list := make([]*models.SumWord, len(ws))
+	i := 0
+	for _, v := range ws {
+		list[i] = v
+		i++
+	}
+
+	//需要根据总频次排序，从高到底排序
+	for i := 0; i < len(list); i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[i].SumFre() < list[j].SumFre() {
+				list[i], list[j] = list[j], list[i]
+			}
+		}
+	}
+
+	return list
+
 }
 
 //获取任务列表
@@ -270,32 +303,33 @@ func (t *TaskService) GetTaskList(topCount int) ([]models.Task, error) {
 }
 
 //高亮文件指定词汇
-func (t *TaskService) HightlightFile(task models.Task, wordId int, filename string) (string, models.Word, error) {
+func (t *TaskService) HightlightFile(task models.Task, wordId int, filename string) (string, *models.Word, error) {
 
 	//先读取文件
 	dir := t.getTaskNewFilePath(task)
 	bytes, err := ioutil.ReadFile(filepath.Join(dir, filename))
 	if err != nil {
-		return "", models.Word{}, err
+		return "", nil, err
 	}
 
 	//不需要进行高亮，直接显示即可
 	if wordId == 0 {
-		return string(bytes), models.Word{}, nil
+		return string(bytes), nil, nil
 	}
 
-	word, taskWords, err := t.GetTaskSingleWords(task.Id, wordId)
+	sumWord, err := t.GetTaskSingleWords(task.Id, wordId)
 	if err != nil {
-		return "", word, err
+		return "", nil, err
 	}
 
 	w := &worddog.Word{
-		Text:      word.Text,
-		Pos:       word.Pos,
+		Text:      sumWord.Word.Text,
+		Pos:       sumWord.Word.Pos,
 		Positions: []worddog.Position{},
 	}
 
-	for _, v := range taskWords {
+	for _, v := range sumWord.TaskWords {
+
 		if v.FileName != filename {
 			continue
 		}
@@ -321,52 +355,11 @@ func (t *TaskService) HightlightFile(task models.Task, wordId int, filename stri
 		}
 	}
 	if len(w.Positions) == 0 {
-		return string(bytes), word, nil
+		return string(bytes), sumWord.Word, nil
 	}
 
 	html := worddog.HighlightDefault(bytes, w)
-	return html, word, nil
-}
-
-func (t *TaskService) segment(task models.Task, file string) (int, error) {
-	beego.Debug(worddog.Config.MinFre)
-	words, err := worddog.SegmentFile(file)
-	if err != nil {
-		return 0, err
-	}
-
-	ws, err := t.SaveWords(words)
-	if err != nil {
-		return 0, err
-	}
-
-	//存储任务提取的词汇
-	fileName := filepath.Base(file)
-	o := orm.NewOrm()
-
-	//删除原记录
-	_, err = o.QueryTable(&models.TaskWord{}).Filter("TaskId", task.Id).Delete()
-	if err != nil {
-		return 0, err
-	}
-
-	for _, v := range words {
-		postions := ""
-		for _, p := range v.Positions {
-			postions += fmt.Sprintf("(%d|%d),", p.Start, p.End)
-		}
-		_, err := o.Insert(&models.TaskWord{
-			TaskId:   task.Id,
-			WordId:   ws[v.Text].Id,
-			FileName: fileName,
-			Fre:      v.Frequency(),
-			Postion:  postions,
-		})
-		if err != nil {
-			return 0, err
-		}
-	}
-	return len(words), nil
+	return html, sumWord.Word, nil
 }
 
 //保存获取读取词汇基本信息
@@ -387,191 +380,4 @@ func (t *TaskService) SaveWords(words map[string]*worddog.Word) (map[string]*mod
 		ws[w.Text] = w
 	}
 	return ws, nil
-}
-
-//解析原始文件
-func (t *TaskService) AnyFile(task models.Task) error {
-	//1.如果是压缩包，需解压
-	//2.文件格式转换为 utf-8
-
-	srcDir := t.getTaskSrcFilePath(task)
-
-	toDir := t.getTaskNewFilePath(task)
-	if err := os.MkdirAll(toDir, 0777); err != nil {
-		return fmt.Errorf("创建文件存储目录是失败,%s", err)
-	}
-
-	err := filepath.Walk(srcDir, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if f.IsDir() {
-			return nil
-		}
-		ext := filepath.Ext(f.Name())
-
-		if ext == ".txt" {
-			return convert2UTF8(path, filepath.Join(toDir, f.Name()))
-		} else if ext == ".rar" {
-			//解压文件
-		}
-		return nil
-	})
-	return err
-}
-
-var taskDoing chan int
-
-func startTaskDo() {
-	taskDoing = make(chan int, 50)
-	go func() {
-		for {
-			select {
-			case taskId := <-taskDoing:
-				execTask(taskId)
-			}
-		}
-	}()
-}
-
-//任务处理
-func execTask(taskId int) {
-
-	defer func() {
-		//如果异常错误，则需要重新进入队列处理
-		if err := recover(); err != nil {
-			taskDoing <- taskId
-		}
-	}()
-
-	s := TaskService{}
-
-	o := orm.NewOrm()
-
-	//更新状态
-	task, err := s.GetTask(taskId)
-	if err != nil {
-		if err == orm.ErrNoRows {
-			return
-		}
-		//重新获取
-		taskDoing <- taskId
-		//s.UpdateState(taskId, models.StopedWithError, "获取任务失败,"+err.Error())
-		return
-	}
-
-	log := models.TaskLog{}
-
-	if task.Status == models.Status_Running {
-		o.Insert(log.Waring(taskId, "任务当前是%q状态,不能重新运行", task.Status))
-		return
-	}
-
-	o.Insert(log.Notice(taskId, "开始任务处理"))
-	err = s.UpdateState(taskId, models.Status_Running)
-	if err != nil {
-		o.Insert(log.Error(taskId, "更新任务状态失败,%s。终止任务", err))
-		return
-	}
-	var isErrorStop bool
-	defer func() {
-		status := models.Status_Completed
-		if isErrorStop {
-			status = models.Status_StopedWithError
-		}
-		//更新任务状态
-		err = s.UpdateState(taskId, status)
-		if err != nil {
-			o.Insert(log.Error(taskId, "更新任务状态失败,%s。终止任务", err))
-		}
-		o.Insert(log.Notice(taskId, "本次任务处理结束"))
-	}()
-
-	//开始解析文件
-	o.Insert(log.Notice(taskId, "正在处理原始文件"))
-	err = s.AnyFile(task)
-	if err != nil {
-		isErrorStop = true
-		o.Insert(log.Error(taskId, "处理原始文件,%s。终止任务", err))
-		return
-	}
-
-	//开始提取词汇信息
-	//1.获取所有文件
-	//2.并发提前
-
-	o.Insert(log.Notice(taskId, "正在提取词汇"))
-
-	fs := []string{}
-	toDir := s.getTaskNewFilePath(task)
-	err = filepath.Walk(toDir, func(path string, f os.FileInfo, err error) error {
-		if err != nil {
-			return nil
-		}
-		if f.IsDir() {
-			return nil
-		}
-		if filepath.Ext(f.Name()) == ".txt" {
-			fs = append(fs, path)
-		}
-		return nil
-	})
-
-	if err != nil {
-		isErrorStop = true
-		o.Insert(log.Error(taskId, "提取词汇失败,%s。终止任务", err))
-		return
-	}
-
-	wordCount := 0 //提取词汇数
-	if len(fs) > 0 {
-
-		//粗暴方式更新Key
-		gs := GlobalService{}
-		minF := gs.GetItemValue("MINFRE")
-		if minF != "" {
-			worddog.Config.MinFre = com.StrTo(minF).MustInt()
-		}
-
-		//并发处理
-		ws := sync.WaitGroup{}
-		ws.Add(len(fs))
-
-		for _, f := range fs {
-			go func(f string) {
-				c, err := s.segment(task, f)
-				if err != nil {
-					isErrorStop = true
-					o.Insert(log.Error(taskId, "提取词汇失败,%s。终止任务", err))
-					return
-				}
-				wordCount += c
-				ws.Done()
-			}(f)
-		}
-		ws.Wait()
-	}
-	o.Insert(log.Notice(taskId, "共提取%d个词汇", wordCount))
-
-}
-
-func convert2UTF8(srcFile, toFile string) error {
-	beego.Debug(srcFile, toFile)
-	f, err := os.Open(srcFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	//默认按GBK编码处理
-	rd := mahonia.NewDecoder("GB2312").NewReader(f)
-	bytes, err := ioutil.ReadAll(rd)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(toFile, bytes, 0777)
-}
-
-func init() {
-	startTaskDo()
 }

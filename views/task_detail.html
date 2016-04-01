@@ -57,7 +57,7 @@
 				   <div class="am-g am-padding-lg"> 
 				  			{{range .words}}
 						  	 <div class="am-u-md-3 am-text-left">
-						     	<span class=""> <a href="/task/{{$.task.Id}}/word/{{.WordId}}/detail.html">{{.Word.Text}}</a> {{.Fre}}</span>
+						     	<span class=""> <a href="/task/{{$.task.Id}}/word/{{.Id}}/detail.html">{{.Text}}</a> {{.SumFre}}</span>
 						  	 </div>
 						  	 {{end}}
 				  		
@@ -77,8 +77,9 @@
 				 
 				<ul id="collapse-panel-tasklogs" class="am-list am-list-static">
 		           {{range .taskfiles}}
-				     <li> 
-				     	 <a href="/task/{{$.task.Id}}/word/0/view.html?fileName={{.Name}}">  {{.Name}}</a> 
+				     <li>
+				     {{.Name}} 
+				     	 <!-- <a href="/task/{{$.task.Id}}/word/0/view.html?fileName={{.Name}}">  {{.Name}}</a>  -->
 				     </li> 
 				  {{end}}
 				  </ul>

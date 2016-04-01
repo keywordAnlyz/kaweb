@@ -6,7 +6,8 @@
 {{define "head"}} {{end}} 
 {{define "body"}}
 <div class="am-cf am-padding">
-      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">查看文件</strong> / <small><a href="/task/{{.task.Id}}/detail.html"> {{.task.Name}}</a>,高亮显示词汇【{{.word.Text}}】</small></div>
+      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">查看文件</strong> / <small>
+      <a href="/task/{{.task.Id}}/detail.html"> {{.task.Name}}</a>,高亮显示词汇<strong style="background-color:#FFFF00">{{.word.Text}}</strong></small></div>
     </div>
 <div class="am-g am-g-fixed">
     <div class="am-u-md-10">

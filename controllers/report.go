@@ -47,7 +47,7 @@ func (r *ReportController) Get() {
 	ks = strings.Replace(ks, " ", ",", -1)
 	ks = strings.Replace(ks, "，", ",", -1)
 	keywords := strings.Split(ks, ",")
-	minFre, _ := r.GetInt("minFre", 0)
+	minFre, _ := r.GetInt("minFre", 20)
 
 	words, err := s.FilterTaskWords(taskId, keywords, minFre)
 	if err != nil {
@@ -57,5 +57,6 @@ func (r *ReportController) Get() {
 	}
 	r.Data["words"] = words
 	r.Data["keywords"] = ks
+
 	r.Data["minFre"] = minFre
 }
