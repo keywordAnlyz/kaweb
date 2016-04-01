@@ -1,4 +1,5 @@
-<html class="no-js">
+<!doctype html>
+<html class="js cssanimations">
 
 <head>
     {{template "base/header.html" .}} {{template "head" .}}
@@ -64,15 +65,15 @@
         <!-- content start -->
         <div class="admin-content">  
              {{if .flash.error}}
-                <div class="am-alert am-alert-error" data-am-alert>
+                <div class="am-alert am-alert-warning" data-am-alert>
                   <button type="button" class="am-close">&times;</button>
-                  <p>{{.flash.error}}</p>
+                  <p>{{str2html .flash.error}}</p>
                 </div> 
              {{end}}
               {{if .flash.success}}
                 <div class="am-alert am-alert-success" data-am-alert>
                   <button type="button" class="am-close">&times;</button>
-                  <p>{{.flash.success}}</p>
+                  <p>{{str2html .flash.success}}</p>
                 </div> 
              {{end}}
             

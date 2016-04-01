@@ -19,6 +19,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/astaxie/beego/orm"
 
@@ -30,6 +31,18 @@ type GlobalService struct{}
 var baseGlobalItems []models.KWGlobal
 var defaultGlobalItems = []models.KWGlobal{
 	{Cate: models.BaseItem, ItemDisplay: "最低频次", Item: "MINFRE", Value: "10", Desc: "词汇解析最低频次要求，低于该频次将忽略。"},
+}
+
+func (g *GlobalService) GetItemValue(name string) string {
+	name = strings.ToLower(name)
+
+	c, _ := g.GetBaseConfigs()
+	for _, v := range c {
+		if v.Item == name {
+			return v.Value
+		}
+	}
+	return ""
 }
 
 //获取全局基础配置信息

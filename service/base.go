@@ -52,10 +52,11 @@ func initDB() {
 		panic(err)
 	}
 
-	orm.RegisterModel(&models.KWGlobal{})
+	orm.RegisterModel(&models.KWGlobal{}, &models.Task{}, &models.TaskLog{}, &models.Word{}, &models.TaskWord{})
 
 	//初始化表结构
 	if beego.BConfig.RunMode == beego.DEV {
+		orm.Debug = true
 		orm.RunSyncdb("default", false, true)
 	}
 }

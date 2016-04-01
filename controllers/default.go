@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"time"
+
 	"github.com/astaxie/beego"
 
 	"github.com/keywordAnlyz/kaweb/service"
@@ -43,4 +45,11 @@ func (b *BaseController) StoreFlash() {
 //设置Flash传递地址
 func (b *BaseController) SetFlashTarget(url string) {
 	b.Flash.Data[flashTargetFlag] = url
+}
+
+func init() {
+	//转换为本地时间
+	beego.AddFuncMap("tolocal", func(t time.Time, layout string) string {
+		return t.Local().Format(layout)
+	})
 }

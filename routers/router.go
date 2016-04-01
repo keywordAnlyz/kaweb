@@ -12,5 +12,7 @@ func init() {
 	beego.Router("/global/item/update", &controllers.GlobalController{}, "post:UpdateItem")
 
 	beego.Router("/task/add.html", &controllers.TaskController{}, "get,post:Upload")
+	beego.Router("/task/:id:int/detail.html", &controllers.TaskController{}, "get:Detail")
+	beego.Router("/task/:id:int/start.html", &controllers.TaskController{}, "post,get:StartTask")
 
 }

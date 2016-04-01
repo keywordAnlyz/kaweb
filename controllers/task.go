@@ -8,20 +8,14 @@
 package controllers
 
 import (
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
+	"fmt"
 	"strings"
 	"time"
 
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/utils"
+	"github.com/ysqi/com"
 
-	// "github.com/keywordAnlyz/kaweb/service"
+	"github.com/keywordAnlyz/kaweb/service"
 )
-
-var suportFileType = []string{".txt", ".rar", ".doc"}
 
 type TaskController struct {
 	BaseController
@@ -47,31 +41,81 @@ func (t *TaskController) Upload() {
 		return
 	}
 
-	file, hearder, err := t.GetFile("srcfile")
+	file, header, err := t.GetFile("srcfile")
 	if err != nil {
 		t.Flash.Error("获取待解析文件错误,%s", err)
 		return
 	}
 	defer file.Close()
 
-	ext := filepath.Ext(hearder.Filename)
-	if utils.InSlice(ext, suportFileType) == false {
-		t.Flash.Error("上传待解析文件格式%q不支持，目前仅支持%v", ext, suportFileType)
-		return
-	}
-
-	tofile := filepath.Join(beego.AppPath, "data/upload/", time.Now().Format("20060102"), strconv.FormatInt(time.Now().UnixNano(), 10)+ext)
-
-	//创建文件夹
-	os.Mkdir(filepath.Dir(tofile), 0777)
-
-	f, err := os.OpenFile(tofile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	s := service.TaskService{}
+	task, err := s.NewTask(name, file, header)
 	if err != nil {
-		t.Flash.Error("存储待解析文件失败,%s", err)
+		t.Flash.Error("创建任务失败,%s", err)
 		return
 	}
-	defer f.Close()
-	io.Copy(f, file)
+	t.Flash.Success("创建任务成功,任务名称：%s,<a href='/task/%d/detail.html'>点击查看</a>", task.Name, task.Id)
+}
 
-	t.Flash.Success("创建任务成功")
+func (t *TaskController) Detail() {
+	t.TplName = "task_detail.html"
+
+	strId := t.Ctx.Input.Param(":id")
+	if strId == "" {
+		t.Flash.Error("缺失任务ID，无法获取任务具体信息")
+		return
+	}
+	id := com.StrTo(strId).MustInt()
+	if id <= 0 {
+		t.Flash.Error("任务ID[%s]非法", strId)
+		return
+	}
+
+	s := service.TaskService{}
+	task, err := s.GetTask(id)
+	if err != nil {
+		t.Flash.Error("获取任务信息失败,%s", err)
+		return
+	}
+	t.Data["task"] = task
+
+	logs, err := s.GetTaskLogs(task.Id)
+	if err != nil {
+		t.Flash.Error("获取任务日志失败,%s", err)
+		return
+	}
+	t.Data["tasklogs"] = logs
+
+	fiels, err := s.GetTaskFiles(task.Id)
+	if err != nil {
+		t.Flash.Error("获取任务下文件失败,%s", err)
+	}
+	t.Data["taskfiles"] = fiels
+
+}
+
+func (t *TaskController) StartTask() {
+
+	strId := t.Ctx.Input.Param(":id")
+	if strId == "" {
+		t.Flash.Error("缺失任务ID，无法获取任务具体信息")
+		return
+	}
+	id := com.StrTo(strId).MustInt()
+	if id <= 0 {
+		t.Flash.Error("任务ID[%s]非法", strId)
+		return
+	}
+
+	s := service.TaskService{}
+	err := s.StartTask(id)
+	if err != nil {
+		t.Flash.Error("尝试重启任务失败,%s", err)
+	} else {
+		t.Flash.Success("重启任务成功,刷新查看状态")
+	}
+	url := fmt.Sprintf("/task/%d/detail.html", id)
+	t.SetFlashTarget(url)
+	t.StoreFlash()
+	t.Redirect(url, 302)
 }
