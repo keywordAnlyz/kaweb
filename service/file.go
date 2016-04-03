@@ -22,9 +22,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"sync"
+	"runtime"
 
+	// "github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"github.com/henrylee2cn/mahonia"
 	"github.com/keywordAnlyz/worddog"
@@ -47,12 +49,14 @@ func CompressZip(filename string, toDir string) ([]string, error) {
 	savePaths := []string{}
 
 	for _, f := range cf.File {
+
+		name := mahonia.NewDecoder("GB2312").ConvertString(f.Name)
 		//检查不通过，继续处理下一个文件
-		if checkTaskFile(f.Name) != nil {
+		if checkTaskFile(name) != nil {
 			continue
 		}
 		//忽略
-		if filepath.Ext(f.Name) == ".rar" {
+		if filepath.Ext(name) == ".rar" {
 			continue
 		}
 
@@ -66,7 +70,7 @@ func CompressZip(filename string, toDir string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		saveto := filepath.Join(toDir, f.Name)
+		saveto := filepath.Join(toDir, filepath.Base(name))
 		err = ioutil.WriteFile(saveto, bytes, 0777)
 		if err != nil {
 			return nil, err
@@ -196,26 +200,27 @@ func execTask(taskId int) {
 		//删除原记录
 		_, err = o.QueryTable(&models.TaskWord{}).Filter("TaskId", task.Id).Delete()
 		if err != nil {
+			isErrorStop = true
 			return
 		}
 
 		//并发处理
-		ws := sync.WaitGroup{}
-		ws.Add(len(fs))
+		// ws := sync.WaitGroup{}
+		// ws.Add(len(fs))
 
 		for _, f := range fs {
-			go func(f string) {
-				c, err := segmentWord(task, f)
-				if err != nil {
-					isErrorStop = true
-					o.Insert(log.Error(taskId, "提取词汇失败,%s。终止任务", err))
-					return
-				}
-				wordCount += c
-				ws.Done()
-			}(f)
+			// go func(f string) {
+			// defer ws.Done()
+			c, err := segmentWord(task, f)
+			if err != nil {
+				isErrorStop = true
+				o.Insert(log.Error(taskId, "从%s提取词汇失败,%s。忽略", filepath.Base(f), err))
+				continue
+			}
+			wordCount += c
+			// }(f)
 		}
-		ws.Wait()
+		// ws.Wait()
 	}
 	o.Insert(log.Notice(taskId, "共提取%d个词汇", wordCount))
 
@@ -252,16 +257,36 @@ func convert2UTF8(srcFile, toFile string) error {
 func parsSrcFile(task models.Task) (int, error) {
 	//1.如果是压缩包，需解压
 	//2.文件格式转换为 utf-8
-
+	var err error
 	t := TaskService{}
 	srcDir := t.getTaskSrcFilePath(task)
 	toDir := t.getTaskNewFilePath(task)
-	if err := os.MkdirAll(toDir, 0777); err != nil {
+	if err = os.MkdirAll(toDir, 0777); err != nil {
 		return 0, fmt.Errorf("创建文件存储目录是失败,%s", err)
 	}
 
 	count := 0
-	err := filepath.Walk(srcDir, func(path string, f os.FileInfo, err error) error {
+
+	if runtime.GOOS == "windows" {
+
+		//通过exe 进行文件转换
+		cmd := exec.Command("./bin/Convert2txt.exe", srcDir, toDir)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return 0, err
+		}
+
+		if result := string(output); result != "OK" {
+			return 0, fmt.Errorf("解析原始文件失败,%s", result)
+		}
+		//从文件夹下提取文件数
+		err = filepath.Walk(toDir, func(path string, f os.FileInfo, err error) error {
+			count++
+			return nil
+		})
+		return count, err
+	}
+	err = filepath.Walk(srcDir, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -283,6 +308,7 @@ func parsSrcFile(task models.Task) (int, error) {
 		return nil
 	})
 	return count, err
+
 }
 
 //提取词汇

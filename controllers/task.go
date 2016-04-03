@@ -84,11 +84,11 @@ func (t *TaskController) Detail() {
 	}
 	t.Data["tasklogs"] = logs
 
-	fiels, err := s.GetTaskFiles(task.Id)
-	if err != nil {
-		t.Flash.Error("获取任务下文件失败,%s", err)
-	}
-	t.Data["taskfiles"] = fiels
+	// fiels, err := s.GetTaskFiles(task.Id)
+	// if err != nil {
+	// 	t.Flash.Error("获取任务下文件失败,%s", err)
+	// }
+	// t.Data["taskfiles"] = fiels
 
 	words, err := s.GetTaskWords(task.Id, 30)
 	if err != nil {

@@ -203,11 +203,28 @@ func (t *TaskService) GetTaskWords(taskId int, topCount int) ([]*models.SumWord,
 		return nil, err
 	}
 	for i, v := range list {
-		w := models.Word{Id: v.WordId}
-		o.QueryTable(&w).Filter("Id", w.Id).One(&w)
-		list[i].Word = w
+		w, _ := t.GetWordInfo(v.WordId)
+		if w != nil {
+			list[i].Word = *w
+		}
 	}
 	return t.GroupTaskWordsByWordId(list), nil
+}
+
+var allwords = map[int]*models.Word{}
+
+func (t *TaskService) GetWordInfo(wordId int) (*models.Word, error) {
+	if v, ok := allwords[wordId]; ok {
+		return v, nil
+	}
+	o := orm.NewOrm()
+	w := &models.Word{Id: wordId}
+	err := o.QueryTable(w).Filter("Id", w.Id).One(w)
+	if err != nil {
+		return nil, err
+	}
+	allwords[w.Id] = w
+	return w, nil
 }
 
 //获取任务
@@ -241,8 +258,7 @@ func (t *TaskService) FilterTaskWords(taskId int, keywords []string, minFre int)
 func (t *TaskService) GetTaskSingleWords(taskId int, wordId int) (*models.SumWord, error) {
 
 	o := orm.NewOrm()
-	w := &models.Word{Id: wordId}
-	err := o.QueryTable(&w).Filter("Id", wordId).One(w)
+	w, err := t.GetWordInfo(wordId)
 	if err != nil {
 		return nil, err
 	}
@@ -378,6 +394,7 @@ func (t *TaskService) SaveWords(words map[string]*worddog.Word) (map[string]*mod
 			w.Id = int(id)
 		}
 		ws[w.Text] = w
+		allwords[w.Id] = w
 	}
 	return ws, nil
 }
