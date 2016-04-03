@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	// "github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"github.com/henrylee2cn/mahonia"
 	"github.com/keywordAnlyz/worddog"
@@ -35,7 +34,7 @@ import (
 	"github.com/keywordAnlyz/kaweb/models"
 )
 
-var suportFileType = []string{".txt", ".zip", ".doc"}
+var suportFileType = []string{".txt", ".zip", ".doc", ".rar", ".docx"}
 
 //解压 ZIP 文件
 func CompressZip(filename string, toDir string) ([]string, error) {
@@ -328,21 +327,27 @@ func segmentWord(task models.Task, file string) (int, error) {
 	fileName := filepath.Base(file)
 	o := orm.NewOrm()
 
+	taskWords := []*models.TaskWord{}
 	for _, v := range words {
 		postions := ""
 		for _, p := range v.Positions {
 			postions += fmt.Sprintf("(%d|%d),", p.Start, p.End)
 		}
-		_, err := o.Insert(&models.TaskWord{
+		taskWords = append(taskWords, &models.TaskWord{
 			TaskId:   task.Id,
 			WordId:   ws[v.Text].Id,
 			FileName: fileName,
 			Fre:      v.Frequency(),
 			Postion:  postions,
 		})
-		if err != nil {
-			return 0, err
-		}
+	}
+	//批量存储
+	counts, err := o.InsertMulti(100, taskWords)
+	if err != nil {
+		return 0, err
+	}
+	if int(counts) != len(taskWords) {
+		return 0, fmt.Errorf("词汇存储不正确，提取文件%q词汇%d个，实际上存储数为%d", fileName, len(taskWords), counts)
 	}
 	return len(words), nil
 }
