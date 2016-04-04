@@ -94,7 +94,6 @@ func (t *TaskController) Detail() {
 	if err != nil {
 		t.Flash.Error("获取文件词汇失败,%s", err)
 	}
-
 	t.Data["words"] = words
 
 }

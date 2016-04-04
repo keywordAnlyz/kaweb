@@ -35,11 +35,7 @@
 		 	<td  class="am-primary"></td>
 		 	<td>
 		 		  <a href="/task/{{.task.Id}}/start.html"  class="am-btn am-radius am-btn-primary"> 尝试重启</a>
-		 		    <a href="/task/{{.task.Id}}/detail.html"  class="am-btn am-radius am-btn-primary"> 刷新状态</a>
-		 		   {{if .words}} 
-		 		        <a href="/task/{{.task.Id}}/words.html" c class="am-btn am-radius am-btn-primary">查看词汇列表</a>
-						   <a href="/report/show.html?taskId={{.task.Id}}"  class="am-btn am-radius am-btn-primary">查看报表统计</a>
-		 		   {{end}}
+		 		    <a href="/task/{{.task.Id}}/detail.html"  class="am-btn am-radius am-btn-primary"> 刷新状态</a> 
 		 	</td>
 		 </tr>
 	</tbody>
@@ -52,7 +48,12 @@
     		<div class="am-u-md-12">
 				 <div class="am-panel am-panel-default">
 				  <div class="am-panel-hd">
-				    <div class="am-panel-hd am-cf"  >词汇TOP{{len .words}}</div>
+				    <div class="am-panel-hd am-cf"  >词汇TOP{{len .words}}
+					<span class="am-fr">
+						 <a href="/task/{{.task.Id}}/words.html" c class="">查看词汇列表</a>
+						   <a href="/report/show.html?taskId={{.task.Id}}"  class="">查看报表统计</a>
+					</span>
+				    </div> 
 				  </div>
 				   <div class="am-g am-padding-lg"> 
 				  			{{range .words}}

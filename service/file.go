@@ -191,10 +191,7 @@ func execTask(taskId int) {
 
 		//粗暴方式更新Key
 		gs := GlobalService{}
-		minF := gs.GetItemValue("MINFRE")
-		if minF != "" {
-			worddog.Config.MinFre = com.StrTo(minF).MustInt()
-		}
+		worddog.Config.MinFre = gs.MinFre()
 
 		//删除原记录
 		_, err = o.QueryTable(&models.TaskWord{}).Filter("TaskId", task.Id).Delete()
@@ -315,6 +312,21 @@ func segmentWord(task models.Task, file string) (int, error) {
 	words, err := worddog.SegmentFile(file)
 	if err != nil {
 		return 0, err
+	}
+
+	//词汇长度检测
+	g := GlobalService{}
+	fmt.Println(g.NeedIgnoreOne())
+	if g.NeedIgnoreOne() {
+		for k, _ := range words {
+			if len([]rune(k)) <= 1 {
+				delete(words, k)
+			}
+		}
+	}
+
+	if len(words) == 0 {
+		return 0, nil
 	}
 
 	t := TaskService{}

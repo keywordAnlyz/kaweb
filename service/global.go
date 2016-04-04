@@ -21,16 +21,34 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
+	"github.com/ysqi/com"
 
 	"github.com/keywordAnlyz/kaweb/models"
 )
 
 type GlobalService struct{}
 
-var baseGlobalItems []models.KWGlobal
-var defaultGlobalItems = []models.KWGlobal{
-	{Cate: models.BaseItem, ItemDisplay: "最低频次", Item: "MINFRE", Value: "10", Desc: "词汇解析最低频次要求，低于该频次将忽略。"},
+var baseGlobalItems []*models.KWGlobal
+var defaultGlobalItems = []*models.KWGlobal{
+	&models.KWGlobal{Cate: models.BaseItem, ItemDisplay: "最低频次", Item: "MINFRE", Value: "10", Desc: "词汇解析最低频次要求，低于该频次将忽略（只对新任务生效）。"},
+	&models.KWGlobal{Cate: models.BaseItem, ItemDisplay: "忽略单字", Item: "IGNOREONE", Value: "Y", Desc: "词汇解析时忽略单字词汇，如：我，的，动，从...（只对新任务生效）"},
+}
+
+//是否忽略单字
+func (g *GlobalService) NeedIgnoreOne() bool {
+	return strings.ToLower(g.GetItemValue("IGNOREONE")) == "y"
+}
+
+//获取最新频次要求
+func (g *GlobalService) MinFre() int {
+	v := g.GetItemValue("MINFRE")
+	if v == "" {
+		return 0
+	}
+	return com.StrTo(v).MustInt()
+
 }
 
 func (g *GlobalService) GetItemValue(name string) string {
@@ -38,7 +56,7 @@ func (g *GlobalService) GetItemValue(name string) string {
 
 	c, _ := g.GetBaseConfigs()
 	for _, v := range c {
-		if v.Item == name {
+		if strings.ToLower(v.Item) == name {
 			return v.Value
 		}
 	}
@@ -46,7 +64,7 @@ func (g *GlobalService) GetItemValue(name string) string {
 }
 
 //获取全局基础配置信息
-func (g *GlobalService) GetBaseConfigs() ([]models.KWGlobal, error) {
+func (g *GlobalService) GetBaseConfigs() ([]*models.KWGlobal, error) {
 
 	if len(baseGlobalItems) != 0 {
 		return baseGlobalItems, nil
@@ -54,7 +72,7 @@ func (g *GlobalService) GetBaseConfigs() ([]models.KWGlobal, error) {
 
 	o := orm.NewOrm()
 	item := models.KWGlobal{}
-	list := []models.KWGlobal{}
+	list := []*models.KWGlobal{}
 	_, err := o.QueryTable(item).Filter("Cate", models.BaseItem).All(&list)
 	if err != nil {
 		return nil, err
@@ -115,6 +133,7 @@ func (g *GlobalService) initBaseConfig() error {
 	if len(defaultGlobalItems) == 0 {
 		return nil
 	}
+
 	_, err := orm.NewOrm().InsertMulti(len(defaultGlobalItems), defaultGlobalItems)
 	return err
 }

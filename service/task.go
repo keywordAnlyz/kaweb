@@ -208,7 +208,11 @@ func (t *TaskService) GetTaskWords(taskId int, topCount int) ([]*models.SumWord,
 			list[i].Word = *w
 		}
 	}
-	return t.GroupTaskWordsByWordId(list), nil
+	words := t.GroupTaskWordsByWordId(list)
+	if topCount > 0 && len(words) > topCount {
+		return words[:topCount], nil
+	}
+	return words, nil
 }
 
 var allwords = map[int]*models.Word{}
@@ -225,6 +229,28 @@ func (t *TaskService) GetWordInfo(wordId int) (*models.Word, error) {
 	}
 	allwords[w.Id] = w
 	return w, nil
+}
+
+func (t *TaskService) GetWordInfoByName(wordText string) (*models.Word, error) {
+	wordText = strings.Trim(wordText, "")
+	for _, v := range allwords {
+		if v.Text == wordText {
+			return v, nil
+		}
+	}
+	//从DB中查找
+	o := orm.NewOrm()
+	w := &models.Word{}
+	err := o.QueryTable(w).Filter("Text", wordText).One(w)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	allwords[w.Id] = w
+	return w, nil
+
 }
 
 //获取任务
@@ -381,20 +407,35 @@ func (t *TaskService) HightlightFile(task models.Task, wordId int, filename stri
 //保存获取读取词汇基本信息
 func (t *TaskService) SaveWords(words map[string]*worddog.Word) (map[string]*models.Word, error) {
 	o := orm.NewOrm()
+	needCreate := []*models.Word{}
 	ws := make(map[string]*models.Word, len(words))
 	for _, v := range words {
-		//存储词汇
-		w := &models.Word{
-			Text: v.Text,
-			Pos:  v.Pos,
-		}
-		if _, id, err := o.ReadOrCreate(w, "Text"); err != nil {
+
+		w, err := t.GetWordInfoByName(v.Text)
+		if err != nil {
 			return nil, err
-		} else {
-			w.Id = int(id)
 		}
+		if w == nil {
+			needCreate = append(needCreate, &models.Word{
+				Text: v.Text,
+				Pos:  v.Pos,
+			})
+			continue
+		}
+		//存储
 		ws[w.Text] = w
-		allwords[w.Id] = w
+	}
+	//批量存储
+	if len(needCreate) > 0 {
+		_, err := o.InsertMulti(100, needCreate)
+		if err != nil {
+			return nil, err
+		}
+		//存储
+		for _, v := range needCreate {
+			ws[v.Text] = v
+			allwords[v.Id] = v
+		}
 	}
 	return ws, nil
 }
