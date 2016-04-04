@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -47,7 +48,7 @@ func (t *TaskService) createTaskSaveDir(task *models.Task) error {
 	name = task.Name
 	for {
 		dir = filepath.Join(beego.AppPath, "/data/upload/", time.Now().Format("200601"), name)
-		if _, err := os.Stat(task.FilePath); os.IsNotExist(err) {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			break
 		}
 		count++
@@ -93,7 +94,24 @@ func (t *TaskService) NewTask(name string, file multipart.File, header *multipar
 	}
 
 	//存储文件
-	f, err := os.OpenFile(filepath.Join(savePath, header.Filename), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
+	//文件名处理，先从文件头信息中获取
+	//IE浏览器中的header.Filename是全路径，需要从Header中获取
+	fmt.Println(header.Header)
+	desc := header.Header.Get("Content-Disposition")
+	fileName := ""
+	if desc != "" {
+		//将 \ 替换为 \\
+		desc = strings.Replace(desc, "\\", "\\\\", -1)
+		_, m, _ := mime.ParseMediaType(desc)
+		fileName = m["filename"]
+	}
+	if fileName == "" {
+		fileName = header.Filename
+	}
+	if fileName == "" {
+		fileName = "NewFile"
+	}
+	f, err := os.OpenFile(filepath.Join(savePath, filepath.Base(fileName)), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return task, fmt.Errorf("存储待解析文件失败,%s", err)
 	}
