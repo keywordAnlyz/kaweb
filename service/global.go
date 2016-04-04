@@ -21,7 +21,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"github.com/ysqi/com"
 
@@ -133,7 +132,11 @@ func (g *GlobalService) initBaseConfig() error {
 	if len(defaultGlobalItems) == 0 {
 		return nil
 	}
-
-	_, err := orm.NewOrm().InsertMulti(len(defaultGlobalItems), defaultGlobalItems)
-	return err
+	o := orm.NewOrm()
+	for _, v := range defaultGlobalItems {
+		if _, err := o.Insert(v); err != nil {
+			return err
+		}
+	}
+	return nil
 }

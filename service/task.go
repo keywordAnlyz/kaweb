@@ -431,10 +431,15 @@ func (t *TaskService) SaveWords(words map[string]*worddog.Word) (map[string]*mod
 		if err != nil {
 			return nil, err
 		}
+
 		//存储
 		for _, v := range needCreate {
-			ws[v.Text] = v
-			allwords[v.Id] = v
+			w, err := t.GetWordInfoByName(v.Text)
+			if err != nil {
+				return nil, err
+			}
+			ws[w.Text] = w
+			allwords[w.Id] = w
 		}
 	}
 	return ws, nil
