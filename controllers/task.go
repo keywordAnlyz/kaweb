@@ -30,7 +30,7 @@ func (t *TaskController) Upload() {
 		return
 	}
 
-	name := strings.Trim(t.GetString("taskname"), "")
+	name := strings.TrimSpace(t.GetString("taskname"))
 
 	if name == "" {
 		t.Flash.Error("任务名称不能为空")

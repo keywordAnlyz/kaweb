@@ -23,4 +23,8 @@ func init() {
 
 	beego.Router("/report/show.html", &controllers.ReportController{}, "get,post:Get")
 
+	beego.Router("/word/add.html", &controllers.WordController{}, "post:Add")
+	beego.Router("/word/list.html", &controllers.WordController{}, "get,post:List")
+	beego.Router("/word/:wordId:int/delete.html", &controllers.WordController{}, "get,post:Delete")
+
 }

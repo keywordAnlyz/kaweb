@@ -329,8 +329,7 @@ func segmentWord(task models.Task, file string) (int, error) {
 		return 0, nil
 	}
 
-	t := TaskService{}
-	ws, err := t.SaveWords(words)
+	ws, err := SaveWords(words)
 	if err != nil {
 		return 0, err
 	}

@@ -17,12 +17,32 @@
 
 package models
 
+import "time"
+
+type WordFrom int
+
+const (
+	WordFrom_Task    WordFrom = iota //词汇来自 任务解析
+	WordFrom_Cust                    //词汇来自用户自定义
+	WordFrom_CustDel                 //删除
+)
+
+var wordFroms = [...]string{
+	"任务",
+	"自定义",
+	"已删除",
+}
+
+func (w WordFrom) String() string { return wordFroms[w] }
+
 //词汇信息
 type Word struct {
-	Id   int
-	Text string //词汇名
-	Pos  string //词汇属性
-
+	Id         int
+	Text       string    //词汇名
+	Pos        string    //词汇属性
+	Fre        int       //词汇频次
+	From       WordFrom  //词汇来源
+	CreateTime time.Time `orm:"auto_now_add;type(datetime)"` //词汇创建时间
 }
 
 func (w *Word) TableName() string {

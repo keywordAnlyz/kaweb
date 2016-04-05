@@ -1,0 +1,57 @@
+{{template "base/base.html" .}}
+{{define "meta"}} 
+<title>自定义字典</title>
+{{end}} 
+{{define "head"}} {{end}} 
+{{define "body"}}
+<div class="am-cf am-padding">
+      <div class="am-fl am-cf"><strong class="am-text-primary am-text-lg">自定义字典</strong> / <small>增加字典以便分析</small></div>
+    </div>
+
+<div class="am-g am-g-fixed">
+    <div class="am-u-md-9"> 
+		          
+	<form action="/word/add.html" method="POST"  class="am-form" data-am-validator>
+  <fieldset>
+    <legend>NEW</legend>
+    <div class="am-form-group">
+      <label for="words">字典名称</label> 
+         <textarea  id="words" name="words"  placeholder="请输入新字典，一行一个" minlength="1" data-validation-message=”至少1个长度“  required>{{.inputWords}}</textarea>
+    </div>
+    <p><button type="submit" class="am-btn am-btn-primary">新增</button></p>
+  </fieldset>
+</form>
+ </div>
+    </div>
+
+<div class="am-g am-g-fixed">
+	<div>
+		<table class="am-table am-table-striped am-table-hover">
+		 <thead>
+        <tr>
+            <th>字典</th>
+            <th>创建时间</th> 
+            <th></th>
+        </tr>
+    </thead>
+		<tbody>
+			{{range .words}}
+				<tr>
+					<td> 【{{.Text}}】</td> 
+					<td>{{tolocal .CreateTime "2006-01-02 15:04:05"}}</td>
+					<td> 
+						<a href="/word/{{.Id}}/delete.html"  >删除</a>  
+					</td>
+				</tr>
+			{{end}}
+		</tbody>
+		</table>
+
+	</div>
+
+</div>
+    
+{{end}}
+
+{{define "bottom"}} 
+{{end}}
