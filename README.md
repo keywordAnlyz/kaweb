@@ -31,6 +31,14 @@ http://127.0.0.1:8080/
 4. 支持自定义字典
 5. 支持自定义频次  
 
+
+# 系统截图
+
+![image](https://github.com/keywordAnlyz/kaweb/raw/master/static/img/exeMain.png)
+![image](https://github.com/keywordAnlyz/kaweb/raw/master/static/img/newTask.png)
+![image](https://github.com/keywordAnlyz/kaweb/raw/master/static/img/taskResult.png)
+![image](https://github.com/keywordAnlyz/kaweb/raw/master/static/img/tongji.jpg)
+
 # 版本日志：
 
 ## v2.3 
@@ -45,3 +53,4 @@ http://127.0.0.1:8080/
 
 ## v1.5 
   1.支持tar,zip,txt,doc,docx 文件上传
+  
