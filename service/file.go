@@ -315,8 +315,7 @@ func segmentWord(task models.Task, file string) (int, error) {
 	}
 
 	//词汇长度检测
-	g := GlobalService{}
-	fmt.Println(g.NeedIgnoreOne())
+	g := GlobalService{} 
 	if g.NeedIgnoreOne() {
 		for k, _ := range words {
 			if len([]rune(k)) <= 1 {

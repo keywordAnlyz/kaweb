@@ -95,8 +95,7 @@ func (t *TaskService) NewTask(name string, file multipart.File, header *multipar
 
 	//存储文件
 	//文件名处理，先从文件头信息中获取
-	//IE浏览器中的header.Filename是全路径，需要从Header中获取
-	fmt.Println(header.Header)
+	//IE浏览器中的header.Filename是全路径，需要从Header中获取 
 	desc := header.Header.Get("Content-Disposition")
 	fileName := ""
 	if desc != "" {
